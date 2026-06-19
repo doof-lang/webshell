@@ -1,0 +1,44 @@
+{
+  "name": "std/webshell",
+  "version": "0.1.0",
+  "license": "ISC",
+  "build": {
+    "native": {
+      "extraCopyPaths": [
+        "native_webshell.hpp",
+        "native_webshell_shared.hpp"
+      ],
+      "macos": {
+        "sourceFiles": [
+          "native_webshell_macos.mm"
+        ],
+        "frameworks": [
+          "Cocoa",
+          "Foundation",
+          "WebKit"
+        ]
+      },
+      "iosSimulator": {
+        "sourceFiles": [
+          "native_webshell_ios.mm"
+        ],
+        "frameworks": [
+          "Foundation",
+          "UIKit",
+          "WebKit"
+        ]
+      },
+      "iosDevice": {
+        "sourceFiles": [
+          "native_webshell_ios.mm"
+        ],
+        "frameworks": [
+          "Foundation",
+          "UIKit",
+          "WebKit"
+        ]
+      }
+    }
+  },
+  "dependencies": {}
+}

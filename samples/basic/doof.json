@@ -1,0 +1,20 @@
+{
+  "name": "std-webshell-basic-sample",
+  "version": "0.1.0",
+  "license": "ISC",
+  "build": {
+    "target": "macos-app",
+    "executable": "DoofWebShell",
+    "title": "Doof WebShell",
+    "resources": ["web"],
+    "macosApp": {
+      "bundleId": "dev.doof.webshell-sample",
+      "category": "public.app-category.developer-tools"
+    },
+    "iosApp": {
+      "bundleId": "dev.doof.webshell-sample",
+      "minimumDeploymentTarget": "16.0"
+    }
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Doof WebShell</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        font-family: system-ui, sans-serif;
+      }
+
+      body {
+        display: grid;
+        min-height: 100vh;
+        margin: 0;
+        place-items: center;
+        background: #171923;
+        color: #f7fafc;
+      }
+
+      main {
+        width: min(32rem, calc(100% - 3rem));
+      }
+
+      form {
+        display: flex;
+        gap: 0.75rem;
+      }
+
+      input,
+      button {
+        border: 1px solid #4a5568;
+        border-radius: 0.5rem;
+        padding: 0.7rem 0.9rem;
+        font: inherit;
+      }
+
+      input {
+        min-width: 0;
+        flex: 1;
+      }
+
+      button {
+        cursor: pointer;
+        background: #63b3ed;
+        color: #102a43;
+        font-weight: 700;
+      }
+
+      #status {
+        min-height: 1.5rem;
+        color: #90cdf4;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Doof WebShell</h1>
+      <p>This page is bundled with the app and talks to Doof through the native bridge.</p>
+      <form id="greeting-form">
+        <input id="name" value="WebShell" aria-label="Name">
+        <button type="submit">Greet</button>
+      </form>
+      <p id="status">Ready.</p>
+    </main>
+
+    <script>
+      const form = document.querySelector("#greeting-form");
+      const nameInput = document.querySelector("#name");
+      const status = document.querySelector("#status");
+
+      doof.on("greeted", (message) => {
+        status.textContent = `Event from Doof: ${message}`;
+      });
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        status.textContent = "Calling Doof…";
+        try {
+          const message = await doof.call("greet", nameInput.value);
+          status.textContent = message;
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      });
+    </script>
+  </body>
+</html>
