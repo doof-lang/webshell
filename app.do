@@ -45,6 +45,34 @@ export class WebShellApp {
     return native.postEvent(formatJsonValue(event))
   }
 
+  beginOpenFileDialog(requestJson: string): Result<void, string> {
+    return native.beginOpenFileDialog(requestJson)
+  }
+
+  beginSaveFileDialog(requestJson: string): Result<void, string> {
+    return native.beginSaveFileDialog(requestJson)
+  }
+
+  setMenuConfiguration(menuJson: string): Result<void, string> {
+    return native.setMenuConfiguration(menuJson)
+  }
+
+  beginRequestNotificationPermission(requestJson: string): Result<void, string> {
+    return native.beginRequestNotificationPermission(requestJson)
+  }
+
+  beginPostNotification(requestJson: string): Result<void, string> {
+    return native.beginPostNotification(requestJson)
+  }
+
+  beginReadClipboardText(requestJson: string): Result<void, string> {
+    return native.beginReadClipboardText(requestJson)
+  }
+
+  beginWriteClipboardText(requestJson: string): Result<void, string> {
+    return native.beginWriteClipboardText(requestJson)
+  }
+
   stop(): void {
     native.stop()
   }

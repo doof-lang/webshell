@@ -28,6 +28,13 @@
         gap: 0.75rem;
       }
 
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 0.75rem;
+        margin-top: 1rem;
+      }
+
       input,
       button {
         border: 1px solid #4a5568;
@@ -62,6 +69,13 @@
         <input id="name" value="WebShell" aria-label="Name">
         <button type="submit">Greet</button>
       </form>
+      <div class="actions">
+        <button id="open-file" type="button">Open File</button>
+        <button id="save-file" type="button">Save File</button>
+        <button id="notify" type="button">Notify</button>
+        <button id="copy" type="button">Copy</button>
+        <button id="paste" type="button">Paste</button>
+      </div>
       <p id="status">Ready.</p>
     </main>
 
@@ -69,9 +83,23 @@
       const form = document.querySelector("#greeting-form");
       const nameInput = document.querySelector("#name");
       const status = document.querySelector("#status");
+      const openFileButton = document.querySelector("#open-file");
+      const saveFileButton = document.querySelector("#save-file");
+      const notifyButton = document.querySelector("#notify");
+      const copyButton = document.querySelector("#copy");
+      const pasteButton = document.querySelector("#paste");
 
       doof.on("greeted", (message) => {
         status.textContent = `Event from Doof: ${message}`;
+      });
+
+      doof.on("menuCommand", (command) => {
+        if (command.id === "open-file") openFileButton.click();
+        if (command.id === "save-file") saveFileButton.click();
+      });
+
+      doof.on("notificationResponse", (response) => {
+        status.textContent = `Notification selected: ${response.id}`;
       });
 
       form.addEventListener("submit", async (event) => {
@@ -80,6 +108,70 @@
         try {
           const message = await doof.call("greet", nameInput.value);
           status.textContent = message;
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      });
+
+      openFileButton.addEventListener("click", async () => {
+        status.textContent = "Opening file dialog...";
+        try {
+          const path = await doof.native.openFile({ title: "Open File" });
+          status.textContent = path ? `Selected: ${path}` : "Open cancelled.";
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      });
+
+      saveFileButton.addEventListener("click", async () => {
+        status.textContent = "Opening save dialog...";
+        try {
+          const path = await doof.native.saveFile({
+            title: "Save File",
+            suggestedName: "untitled.txt"
+          });
+          status.textContent = path ? `Save path: ${path}` : "Save cancelled.";
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      });
+
+      notifyButton.addEventListener("click", async () => {
+        status.textContent = "Requesting notification permission...";
+        try {
+          const permission = await doof.native.requestNotificationPermission();
+          if (!permission.granted) {
+            status.textContent = `Notifications are ${permission.status}.`;
+            return;
+          }
+          const notification = await doof.native.postNotification({
+            id: "webshell-sample",
+            title: "Doof WebShell",
+            body: "Local notifications are wired up.",
+            userInfo: { sample: true }
+          });
+          status.textContent = `Posted notification: ${notification.id}`;
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      });
+
+      copyButton.addEventListener("click", async () => {
+        status.textContent = "Writing clipboard...";
+        try {
+          await doof.native.writeClipboardText(nameInput.value);
+          status.textContent = "Copied name to clipboard.";
+        } catch (error) {
+          status.textContent = error.message;
+        }
+      });
+
+      pasteButton.addEventListener("click", async () => {
+        status.textContent = "Reading clipboard...";
+        try {
+          const text = await doof.native.readClipboardText();
+          nameInput.value = text;
+          status.textContent = text ? "Pasted clipboard text." : "Clipboard has no text.";
         } catch (error) {
           status.textContent = error.message;
         }

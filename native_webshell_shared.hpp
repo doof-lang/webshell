@@ -9,7 +9,9 @@ namespace doof_webshell::detail {
 inline NSString* bridgeScript() {
     return @R"JS((function () {
   let sequence = 0;
+  let nativeSequence = 0;
   const pending = new Map();
+  const pendingNative = new Map();
   const listeners = new Map();
 
   function call(name, params = null) {
@@ -44,6 +46,44 @@ inline NSString* bridgeScript() {
     };
   }
 
+  function nativeCall(name, options = {}) {
+    const id = `native-${Date.now()}-${++nativeSequence}`;
+    return new Promise((resolve, reject) => {
+      pendingNative.set(id, { resolve, reject });
+      call(name, { id, options }).catch((error) => {
+        pendingNative.delete(id);
+        reject(error);
+      });
+    });
+  }
+
+  function openFile(options = {}) {
+    return nativeCall("__webshell.native.openFile", options);
+  }
+
+  function saveFile(options = {}) {
+    return nativeCall("__webshell.native.saveFile", options);
+  }
+
+  function requestNotificationPermission(options = {}) {
+    return nativeCall("__webshell.native.requestNotificationPermission", options);
+  }
+
+  function postNotification(options = {}) {
+    return nativeCall("__webshell.native.postNotification", options);
+  }
+
+  function readClipboardText() {
+    return nativeCall("__webshell.native.readClipboardText", {});
+  }
+
+  function writeClipboardText(text) {
+    if (typeof text !== "string") {
+      return Promise.reject(new TypeError("writeClipboardText requires a string"));
+    }
+    return nativeCall("__webshell.native.writeClipboardText", { text });
+  }
+
   function resolveResponse(json) {
     let response;
     try { response = JSON.parse(json); } catch (_) { return; }
@@ -57,6 +97,15 @@ inline NSString* bridgeScript() {
   function emitEvent(json) {
     let event;
     try { event = JSON.parse(json); } catch (_) { return; }
+    if (event && event.name === "__webshell.native.result") {
+      const payload = event.payload || {};
+      const entry = pendingNative.get(payload.id);
+      if (entry) {
+        pendingNative.delete(payload.id);
+        if (payload.ok) entry.resolve(payload.value);
+        else entry.reject(new Error(String(payload.error || "Native web shell operation failed")));
+      }
+    }
     const handlers = listeners.get(event.name);
     if (!handlers) return;
     for (const handler of [...handlers]) {
@@ -65,7 +114,15 @@ inline NSString* bridgeScript() {
     }
   }
 
-  const api = Object.freeze({ call, on, __resolve: resolveResponse, __emit: emitEvent });
+  const native = Object.freeze({
+    openFile,
+    saveFile,
+    requestNotificationPermission,
+    postNotification,
+    readClipboardText,
+    writeClipboardText
+  });
+  const api = Object.freeze({ call, on, native, __resolve: resolveResponse, __emit: emitEvent });
   Object.defineProperty(window, "doof", { value: api, configurable: false, writable: false });
 })();)JS";
 }

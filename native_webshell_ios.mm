@@ -2,6 +2,7 @@
 #include "native_webshell_shared.hpp"
 
 #import <UIKit/UIKit.h>
+#import <UserNotifications/UserNotifications.h>
 #import <WebKit/WebKit.h>
 #import <dispatch/dispatch.h>
 
@@ -15,6 +16,78 @@ namespace doof_webshell {
 namespace {
 
 constexpr size_t kMaxPendingEvents = 256;
+
+NSDictionary* parseDialogRequest(const std::string& requestJson, NSString** errorMessage) {
+    NSData* data = [detail::stringFromUtf8(requestJson) dataUsingEncoding:NSUTF8StringEncoding];
+    NSError* error = nil;
+    id value = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+    if (![value isKindOfClass:NSDictionary.class]) {
+        if (errorMessage != nullptr) *errorMessage = error.localizedDescription ?: @"Dialog request must be an object";
+        return nil;
+    }
+    return (NSDictionary*)value;
+}
+
+NSString* dialogRequestId(NSDictionary* request) {
+    id value = request[@"id"];
+    return [value isKindOfClass:NSString.class] ? (NSString*)value : @"";
+}
+
+NSDictionary* dialogOptions(NSDictionary* request) {
+    id value = request[@"options"];
+    return [value isKindOfClass:NSDictionary.class] ? (NSDictionary*)value : @{};
+}
+
+BOOL boolOption(NSDictionary* options, NSString* key, BOOL fallback) {
+    id value = options[key];
+    return [value respondsToSelector:@selector(boolValue)] ? [value boolValue] : fallback;
+}
+
+NSString* stringOption(NSDictionary* options, NSString* key) {
+    id value = options[key];
+    return [value isKindOfClass:NSString.class] ? (NSString*)value : nil;
+}
+
+NSArray<NSString*>* stringArrayOption(NSDictionary* options, NSString* key) {
+    id value = options[key];
+    if (![value isKindOfClass:NSArray.class]) return @[];
+    NSMutableArray<NSString*>* strings = [NSMutableArray array];
+    for (id item in (NSArray*)value) {
+        if ([item isKindOfClass:NSString.class] && [item length] > 0) [strings addObject:item];
+    }
+    return strings;
+}
+
+double doubleOption(NSDictionary* options, NSString* key, double fallback) {
+    id value = options[key];
+    return [value respondsToSelector:@selector(doubleValue)] ? [value doubleValue] : fallback;
+}
+
+NSString* notificationAuthorizationStatusString(UNAuthorizationStatus status) {
+    switch (status) {
+        case UNAuthorizationStatusNotDetermined: return @"notDetermined";
+        case UNAuthorizationStatusDenied: return @"denied";
+        case UNAuthorizationStatusAuthorized: return @"authorized";
+        case UNAuthorizationStatusProvisional: return @"provisional";
+        default: return @"unknown";
+    }
+}
+
+BOOL validateMenuConfigurationJson(const std::string& menuJson, NSString** errorMessage) {
+    NSData* data = [detail::stringFromUtf8(menuJson) dataUsingEncoding:NSUTF8StringEncoding];
+    NSError* error = nil;
+    id root = [NSJSONSerialization JSONObjectWithData:data options:0 error:&error];
+    if (![root isKindOfClass:NSDictionary.class]) {
+        if (errorMessage != nullptr) *errorMessage = error.localizedDescription ?: @"Menu configuration must be an object";
+        return NO;
+    }
+    id menus = ((NSDictionary*)root)[@"menus"];
+    if (![menus isKindOfClass:NSArray.class]) {
+        if (errorMessage != nullptr) *errorMessage = @"Menu configuration must contain a menus array";
+        return NO;
+    }
+    return YES;
+}
 
 UIWindow* applicationWindow() {
     id delegate = UIApplication.sharedApplication.delegate;
@@ -42,6 +115,8 @@ struct RuntimeState {
     WKWebView* webView = nil;
     id delegate = nil;
     NSString* contentRoot = nil;
+    NSString* activeDocumentPickerRequestId = nil;
+    bool activeDocumentPickerAllowsMultiple = false;
     bool running = false;
     bool ready = false;
     bool presented = false;
@@ -52,6 +127,40 @@ struct RuntimeState {
         NSString* script = [NSString stringWithFormat:@"window.doof&&window.doof.__emit(%@);",
                             detail::javascriptStringLiteral(detail::stringFromUtf8(eventJson))];
         [webView evaluateJavaScript:script completionHandler:nil];
+    }
+
+    void evaluateNativeResult(NSString* requestId, BOOL ok, id value, NSString* error) {
+        NSMutableDictionary* payload = [NSMutableDictionary dictionary];
+        payload[@"id"] = requestId ?: @"";
+        payload[@"ok"] = @(ok);
+        if (ok) {
+            payload[@"value"] = value ?: NSNull.null;
+        } else {
+            payload[@"error"] = error ?: @"Native web shell operation failed";
+        }
+        NSDictionary* event = @{
+            @"name": @"__webshell.native.result",
+            @"payload": payload,
+        };
+        NSString* conversionError = nil;
+        NSString* json = detail::jsonStringFromObject(event, &conversionError);
+        if (json != nil) evaluateEvent(detail::utf8FromString(json));
+    }
+
+    void emitNotificationResponse(UNNotificationResponse* response) {
+        UNNotificationRequest* request = response.notification.request;
+        NSMutableDictionary* payload = [NSMutableDictionary dictionary];
+        payload[@"id"] = request.identifier ?: @"";
+        payload[@"action"] = response.actionIdentifier ?: @"";
+        NSDictionary* userInfo = request.content.userInfo;
+        payload[@"userInfo"] = [NSJSONSerialization isValidJSONObject:userInfo] ? userInfo : @{};
+        NSDictionary* event = @{
+            @"name": @"notificationResponse",
+            @"payload": payload,
+        };
+        NSString* conversionError = nil;
+        NSString* json = detail::jsonStringFromObject(event, &conversionError);
+        if (json != nil) evaluateEvent(detail::utf8FromString(json));
     }
 
     void becameReady() {
@@ -93,12 +202,17 @@ struct RuntimeState {
             webView = nil;
             delegate = nil;
             contentRoot = nil;
+            [activeDocumentPickerRequestId release];
+            activeDocumentPickerRequestId = nil;
         }
         if (view != nil) {
             [view.configuration.userContentController removeScriptMessageHandlerForName:@"doof"];
             view.navigationDelegate = nil;
             [view removeFromSuperview];
             [view release];
+        }
+        if (UNUserNotificationCenter.currentNotificationCenter.delegate == handler) {
+            UNUserNotificationCenter.currentNotificationCenter.delegate = nil;
         }
         [handler release];
         [root release];
@@ -109,7 +223,12 @@ struct RuntimeState {
 }  // namespace
 }  // namespace doof_webshell
 
-@interface DoofWebShellIOSDelegate : NSObject <WKScriptMessageHandler, WKNavigationDelegate> {
+@interface DoofWebShellIOSDelegate : NSObject <
+    WKScriptMessageHandler,
+    WKNavigationDelegate,
+    UIDocumentPickerDelegate,
+    UNUserNotificationCenterDelegate
+> {
 @public
     doof_webshell::RuntimeState* state_;
 }
@@ -188,6 +307,56 @@ struct RuntimeState {
     }
     decisionHandler(WKNavigationActionPolicyCancel);
 }
+
+- (void)documentPickerWasCancelled:(UIDocumentPickerViewController*)controller {
+    (void)controller;
+    NSString* requestId = state_->activeDocumentPickerRequestId ?: @"";
+    state_->evaluateNativeResult(requestId, YES, NSNull.null, nil);
+    [state_->activeDocumentPickerRequestId release];
+    state_->activeDocumentPickerRequestId = nil;
+    state_->activeDocumentPickerAllowsMultiple = false;
+}
+
+- (void)documentPicker:(UIDocumentPickerViewController*)controller didPickDocumentsAtURLs:(NSArray<NSURL*>*)urls {
+    (void)controller;
+    NSString* requestId = state_->activeDocumentPickerRequestId ?: @"";
+    if (state_->activeDocumentPickerAllowsMultiple) {
+        NSMutableArray<NSString*>* paths = [NSMutableArray array];
+        for (NSURL* url in urls) {
+            if (url.path != nil) [paths addObject:url.path];
+        }
+        state_->evaluateNativeResult(requestId, YES, paths, nil);
+    } else {
+        NSURL* url = urls.firstObject;
+        state_->evaluateNativeResult(requestId, YES, url.path ?: (id)NSNull.null, nil);
+    }
+    [state_->activeDocumentPickerRequestId release];
+    state_->activeDocumentPickerRequestId = nil;
+    state_->activeDocumentPickerAllowsMultiple = false;
+}
+
+- (void)userNotificationCenter:(UNUserNotificationCenter*)center
+       willPresentNotification:(UNNotification*)notification
+         withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler {
+    (void)center;
+    (void)notification;
+    if (@available(iOS 14.0, *)) {
+        completionHandler(UNNotificationPresentationOptionBanner |
+                          UNNotificationPresentationOptionList |
+                          UNNotificationPresentationOptionSound);
+    } else {
+        completionHandler(UNNotificationPresentationOptionAlert |
+                          UNNotificationPresentationOptionSound);
+    }
+}
+
+- (void)userNotificationCenter:(UNUserNotificationCenter*)center
+didReceiveNotificationResponse:(UNNotificationResponse*)response
+         withCompletionHandler:(void (^)(void))completionHandler {
+    (void)center;
+    state_->emitNotificationResponse(response);
+    completionHandler();
+}
 @end
 
 namespace doof_webshell {
@@ -195,6 +364,7 @@ namespace doof_webshell {
 struct NativeWebShellApp::Impl {
     std::string htmlPath;
     std::string title;
+    std::string menuConfigurationJson;
     int32_t width;
     int32_t height;
     std::shared_ptr<RuntimeState> state = std::make_shared<RuntimeState>();
@@ -235,6 +405,257 @@ doof::Result<void, std::string> NativeWebShellApp::postEvent(const std::string& 
         }
     }
     dispatch_async(dispatch_get_main_queue(), ^{ state->evaluateEvent(eventJson); });
+    return doof::Result<void, std::string>::success();
+}
+
+doof::Result<void, std::string> NativeWebShellApp::beginOpenFileDialog(const std::string& requestJson) {
+    __block std::string startError;
+    auto state = impl_->state;
+    void (^startDialog)(void) = ^{
+        {
+            std::lock_guard<std::mutex> lock(state->mutex);
+            if (state->stopped) {
+                startError = "Web shell has stopped";
+                return;
+            }
+            if (state->webView == nil || state->delegate == nil) {
+                startError = "Web shell view is not ready";
+                return;
+            }
+            if (state->activeDocumentPickerRequestId != nil) {
+                startError = "A document picker is already active";
+                return;
+            }
+        }
+
+        NSString* parseError = nil;
+        NSDictionary* request = parseDialogRequest(requestJson, &parseError);
+        if (request == nil) {
+            startError = detail::utf8FromString(parseError ?: @"Invalid open file dialog request");
+            return;
+        }
+
+        UIWindow* window = applicationWindow();
+        UIViewController* presenter = window.rootViewController;
+        if (presenter == nil) {
+            startError = "UIApplication root view is not ready";
+            return;
+        }
+        while (presenter.presentedViewController != nil) presenter = presenter.presentedViewController;
+
+        NSDictionary* options = dialogOptions(request);
+        NSArray<NSString*>* types = stringArrayOption(options, @"types");
+        if (types.count == 0) types = @[ @"public.item" ];
+        UIDocumentPickerViewController* picker = [[UIDocumentPickerViewController alloc] initWithDocumentTypes:types
+                                                                                                        inMode:UIDocumentPickerModeOpen];
+        picker.delegate = (id<UIDocumentPickerDelegate>)state->delegate;
+        if ([picker respondsToSelector:@selector(setAllowsMultipleSelection:)]) {
+            picker.allowsMultipleSelection = boolOption(options, @"multiple", NO);
+        }
+        NSString* title = stringOption(options, @"title");
+        if (title != nil) picker.title = title;
+
+        state->activeDocumentPickerRequestId = [dialogRequestId(request) copy];
+        state->activeDocumentPickerAllowsMultiple = boolOption(options, @"multiple", NO);
+        [presenter presentViewController:picker animated:YES completion:nil];
+        [picker release];
+    };
+
+    if ([NSThread isMainThread]) startDialog();
+    else dispatch_sync(dispatch_get_main_queue(), startDialog);
+
+    if (!startError.empty()) return doof::Result<void, std::string>::failure(startError);
+    return doof::Result<void, std::string>::success();
+}
+
+doof::Result<void, std::string> NativeWebShellApp::beginSaveFileDialog(const std::string& requestJson) {
+    (void)requestJson;
+    return doof::Result<void, std::string>::failure(
+        "Save file dialogs are not yet supported by the iOS web shell"
+    );
+}
+
+doof::Result<void, std::string> NativeWebShellApp::setMenuConfiguration(const std::string& menuJson) {
+    NSString* error = nil;
+    if (!validateMenuConfigurationJson(menuJson, &error)) {
+        return doof::Result<void, std::string>::failure(detail::utf8FromString(error ?: @"Invalid menu configuration"));
+    }
+    impl_->menuConfigurationJson = menuJson;
+    return doof::Result<void, std::string>::success();
+}
+
+doof::Result<void, std::string> NativeWebShellApp::beginRequestNotificationPermission(const std::string& requestJson) {
+    NSString* parseError = nil;
+    NSDictionary* request = parseDialogRequest(requestJson, &parseError);
+    if (request == nil) {
+        return doof::Result<void, std::string>::failure(
+            detail::utf8FromString(parseError ?: @"Invalid notification permission request")
+        );
+    }
+
+    NSString* requestId = [dialogRequestId(request) copy];
+    NSDictionary* options = dialogOptions(request);
+    UNAuthorizationOptions authorizationOptions = 0;
+    if (boolOption(options, @"alert", YES)) authorizationOptions |= UNAuthorizationOptionAlert;
+    if (boolOption(options, @"sound", YES)) authorizationOptions |= UNAuthorizationOptionSound;
+    if (boolOption(options, @"badge", YES)) authorizationOptions |= UNAuthorizationOptionBadge;
+    auto state = impl_->state;
+    [UNUserNotificationCenter.currentNotificationCenter requestAuthorizationWithOptions:authorizationOptions
+                                                                      completionHandler:^(BOOL granted, NSError* error) {
+        [UNUserNotificationCenter.currentNotificationCenter getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings* settings) {
+            NSMutableDictionary* value = [NSMutableDictionary dictionary];
+            value[@"granted"] = @(granted);
+            value[@"status"] = notificationAuthorizationStatusString(settings.authorizationStatus);
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (error != nil) {
+                    state->evaluateNativeResult(requestId, NO, nil, error.localizedDescription);
+                } else {
+                    state->evaluateNativeResult(requestId, YES, value, nil);
+                }
+                [requestId release];
+            });
+        }];
+    }];
+    return doof::Result<void, std::string>::success();
+}
+
+doof::Result<void, std::string> NativeWebShellApp::beginPostNotification(const std::string& requestJson) {
+    NSString* parseError = nil;
+    NSDictionary* request = parseDialogRequest(requestJson, &parseError);
+    if (request == nil) {
+        return doof::Result<void, std::string>::failure(
+            detail::utf8FromString(parseError ?: @"Invalid post notification request")
+        );
+    }
+
+    NSString* requestId = [dialogRequestId(request) copy];
+    NSDictionary* options = [dialogOptions(request) retain];
+    NSString* title = [stringOption(options, @"title") copy];
+    if (title == nil || title.length == 0) {
+        [requestId release];
+        [title release];
+        [options release];
+        return doof::Result<void, std::string>::failure("Notification title must not be empty");
+    }
+
+    NSString* notificationId = [stringOption(options, @"id") ?: requestId copy];
+    NSString* subtitle = [stringOption(options, @"subtitle") copy];
+    NSString* body = [stringOption(options, @"body") copy];
+    BOOL sound = boolOption(options, @"sound", YES);
+    id rawBadge = options[@"badge"];
+    NSNumber* badge = [rawBadge respondsToSelector:@selector(integerValue)] ? [rawBadge retain] : nil;
+    id rawUserInfo = options[@"userInfo"];
+    NSDictionary* userInfo = [rawUserInfo isKindOfClass:NSDictionary.class] &&
+                                      [NSJSONSerialization isValidJSONObject:rawUserInfo]
+                                  ? [rawUserInfo retain]
+                                  : nil;
+    double delaySeconds = doubleOption(options, @"delaySeconds", 0.0);
+    [options release];
+
+    auto state = impl_->state;
+    [UNUserNotificationCenter.currentNotificationCenter getNotificationSettingsWithCompletionHandler:^(UNNotificationSettings* settings) {
+        if (settings.authorizationStatus == UNAuthorizationStatusDenied ||
+            settings.authorizationStatus == UNAuthorizationStatusNotDetermined) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                state->evaluateNativeResult(requestId, NO, nil, @"Notification permission has not been granted");
+                [requestId release];
+                [notificationId release];
+                [title release];
+                [subtitle release];
+                [body release];
+                [badge release];
+                [userInfo release];
+            });
+            return;
+        }
+
+        UNMutableNotificationContent* content = [[[UNMutableNotificationContent alloc] init] autorelease];
+        content.title = title;
+        if (subtitle != nil) content.subtitle = subtitle;
+        if (body != nil) content.body = body;
+        if (sound) content.sound = UNNotificationSound.defaultSound;
+        if (badge != nil) content.badge = @([badge integerValue]);
+        if (userInfo != nil) content.userInfo = userInfo;
+
+        UNNotificationTrigger* trigger = nil;
+        if (delaySeconds > 0.0) {
+            trigger = [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:delaySeconds repeats:NO];
+        }
+        UNNotificationRequest* notificationRequest = [UNNotificationRequest requestWithIdentifier:notificationId
+                                                                                          content:content
+                                                                                          trigger:trigger];
+        [UNUserNotificationCenter.currentNotificationCenter addNotificationRequest:notificationRequest
+                                                             withCompletionHandler:^(NSError* error) {
+            dispatch_async(dispatch_get_main_queue(), ^{
+                if (error != nil) {
+                    state->evaluateNativeResult(requestId, NO, nil, error.localizedDescription);
+                } else {
+                    state->evaluateNativeResult(requestId, YES, @{ @"id": notificationId }, nil);
+                }
+                [requestId release];
+                [notificationId release];
+                [title release];
+                [subtitle release];
+                [body release];
+                [badge release];
+                [userInfo release];
+            });
+        }];
+    }];
+    return doof::Result<void, std::string>::success();
+}
+
+doof::Result<void, std::string> NativeWebShellApp::beginReadClipboardText(const std::string& requestJson) {
+    NSString* parseError = nil;
+    NSDictionary* request = parseDialogRequest(requestJson, &parseError);
+    if (request == nil) {
+        return doof::Result<void, std::string>::failure(
+            detail::utf8FromString(parseError ?: @"Invalid read clipboard request")
+        );
+    }
+
+    __block NSString* requestId = nil;
+    __block NSString* text = nil;
+    void (^readClipboard)(void) = ^{
+        requestId = [dialogRequestId(request) copy];
+        text = [UIPasteboard.generalPasteboard.string copy] ?: [@"" copy];
+    };
+    if ([NSThread isMainThread]) readClipboard();
+    else dispatch_sync(dispatch_get_main_queue(), readClipboard);
+
+    impl_->state->evaluateNativeResult(requestId, YES, text, nil);
+    [requestId release];
+    [text release];
+    return doof::Result<void, std::string>::success();
+}
+
+doof::Result<void, std::string> NativeWebShellApp::beginWriteClipboardText(const std::string& requestJson) {
+    NSString* parseError = nil;
+    NSDictionary* request = parseDialogRequest(requestJson, &parseError);
+    if (request == nil) {
+        return doof::Result<void, std::string>::failure(
+            detail::utf8FromString(parseError ?: @"Invalid write clipboard request")
+        );
+    }
+
+    NSDictionary* options = dialogOptions(request);
+    NSString* text = stringOption(options, @"text");
+    if (text == nil) {
+        return doof::Result<void, std::string>::failure("Clipboard text must be a string");
+    }
+
+    __block NSString* requestId = nil;
+    NSString* textCopy = [text copy];
+    void (^writeClipboard)(void) = ^{
+        requestId = [dialogRequestId(request) copy];
+        UIPasteboard.generalPasteboard.string = textCopy;
+    };
+    if ([NSThread isMainThread]) writeClipboard();
+    else dispatch_sync(dispatch_get_main_queue(), writeClipboard);
+
+    impl_->state->evaluateNativeResult(requestId, YES, @{ @"ok": @YES }, nil);
+    [requestId release];
+    [textCopy release];
     return doof::Result<void, std::string>::success();
 }
 
@@ -294,6 +715,7 @@ doof::Result<void, std::string> NativeWebShellApp::run(
                                                     forMainFrameOnly:YES] autorelease];
         [content addUserScript:script];
         state->delegate = [[DoofWebShellIOSDelegate alloc] initWithState:state.get()];
+        UNUserNotificationCenter.currentNotificationCenter.delegate = state->delegate;
         [content addScriptMessageHandler:state->delegate name:@"doof"];
         state->webView = [[WKWebView alloc] initWithFrame:root.view.bounds configuration:configuration];
         state->webView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;

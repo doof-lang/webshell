@@ -20,6 +20,13 @@ public:
     ~NativeWebShellApp();
 
     doof::Result<void, std::string> postEvent(const std::string& eventJson);
+    doof::Result<void, std::string> beginOpenFileDialog(const std::string& requestJson);
+    doof::Result<void, std::string> beginSaveFileDialog(const std::string& requestJson);
+    doof::Result<void, std::string> setMenuConfiguration(const std::string& menuJson);
+    doof::Result<void, std::string> beginRequestNotificationPermission(const std::string& requestJson);
+    doof::Result<void, std::string> beginPostNotification(const std::string& requestJson);
+    doof::Result<void, std::string> beginReadClipboardText(const std::string& requestJson);
+    doof::Result<void, std::string> beginWriteClipboardText(const std::string& requestJson);
     void requestWake();
     void stop();
     doof::Result<void, std::string> run(
