@@ -7,6 +7,12 @@ It is useful for lightweight desktop or mobile UI where the application logic
 stays in Doof and the interface is written with ordinary HTML, CSS, and
 JavaScript.
 
+## Documentation
+
+- [Guide and API reference](docs/API.md) explains app lifecycle, JSON bridge calls, queued events, dialogs, menus, notifications, clipboard, and platform scope.
+- Tests can be run with `doof test webshell`.
+- [Samples](samples/) show complete programs built with this module.
+
 ## Basic app
 
 ```doof
