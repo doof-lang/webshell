@@ -2,8 +2,8 @@ import { formatJsonValue } from "std/json"
 
 import { WebShellApp } from "./app"
 
-const REQUEST_PERMISSION_BINDING = "__webshell.native.requestNotificationPermission"
-const POST_NOTIFICATION_BINDING = "__webshell.native.postNotification"
+readonly REQUEST_PERMISSION_BINDING = "__webshell.native.requestNotificationPermission"
+readonly POST_NOTIFICATION_BINDING = "__webshell.native.postNotification"
 
 export function installWebShellNotifications(app: WebShellApp): void {
   app.bind(REQUEST_PERMISSION_BINDING, (params: JsonValue): Result<JsonValue, string> => {

@@ -2,8 +2,8 @@ import { formatJsonValue } from "std/json"
 
 import { WebShellApp } from "./app"
 
-const OPEN_FILE_BINDING = "__webshell.native.openFile"
-const SAVE_FILE_BINDING = "__webshell.native.saveFile"
+readonly OPEN_FILE_BINDING = "__webshell.native.openFile"
+readonly SAVE_FILE_BINDING = "__webshell.native.saveFile"
 
 export function installWebShellDialogs(app: WebShellApp): void {
   app.bind(OPEN_FILE_BINDING, (params: JsonValue): Result<JsonValue, string> => {

@@ -2,8 +2,8 @@ import { formatJsonValue } from "std/json"
 
 import { WebShellApp } from "./app"
 
-const READ_TEXT_BINDING = "__webshell.native.readClipboardText"
-const WRITE_TEXT_BINDING = "__webshell.native.writeClipboardText"
+readonly READ_TEXT_BINDING = "__webshell.native.readClipboardText"
+readonly WRITE_TEXT_BINDING = "__webshell.native.writeClipboardText"
 
 export function installWebShellClipboard(app: WebShellApp): void {
   app.bind(READ_TEXT_BINDING, (params: JsonValue): Result<JsonValue, string> => {
