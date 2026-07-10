@@ -395,17 +395,17 @@ doof::Result<void, std::string> NativeWebShellApp::postEvent(const std::string& 
     auto state = impl_->state;
     {
         std::lock_guard<std::mutex> lock(state->mutex);
-        if (state->stopped) return doof::Result<void, std::string>::failure("Web shell has stopped");
+        if (state->stopped) return doof::Failure<std::string>{"Web shell has stopped"};
         if (!state->ready) {
             if (state->pendingEvents.size() >= kMaxPendingEvents) {
-                return doof::Result<void, std::string>::failure("Web shell pending event queue is full");
+                return doof::Failure<std::string>{"Web shell pending event queue is full"};
             }
             state->pendingEvents.push_back(eventJson);
-            return doof::Result<void, std::string>::success();
+            return doof::Success<void>{};
         }
     }
     dispatch_async(dispatch_get_main_queue(), ^{ state->evaluateEvent(eventJson); });
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginOpenFileDialog(const std::string& requestJson) {
@@ -464,33 +464,29 @@ doof::Result<void, std::string> NativeWebShellApp::beginOpenFileDialog(const std
     if ([NSThread isMainThread]) startDialog();
     else dispatch_sync(dispatch_get_main_queue(), startDialog);
 
-    if (!startError.empty()) return doof::Result<void, std::string>::failure(startError);
-    return doof::Result<void, std::string>::success();
+    if (!startError.empty()) return doof::Failure<std::string>{startError};
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginSaveFileDialog(const std::string& requestJson) {
     (void)requestJson;
-    return doof::Result<void, std::string>::failure(
-        "Save file dialogs are not yet supported by the iOS web shell"
-    );
+    return doof::Failure<std::string>{"Save file dialogs are not yet supported by the iOS web shell"};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::setMenuConfiguration(const std::string& menuJson) {
     NSString* error = nil;
     if (!validateMenuConfigurationJson(menuJson, &error)) {
-        return doof::Result<void, std::string>::failure(detail::utf8FromString(error ?: @"Invalid menu configuration"));
+        return doof::Failure<std::string>{detail::utf8FromString(error ?: @"Invalid menu configuration")};
     }
     impl_->menuConfigurationJson = menuJson;
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginRequestNotificationPermission(const std::string& requestJson) {
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(
-            detail::utf8FromString(parseError ?: @"Invalid notification permission request")
-        );
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid notification permission request")};
     }
 
     NSString* requestId = [dialogRequestId(request) copy];
@@ -516,16 +512,14 @@ doof::Result<void, std::string> NativeWebShellApp::beginRequestNotificationPermi
             });
         }];
     }];
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginPostNotification(const std::string& requestJson) {
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(
-            detail::utf8FromString(parseError ?: @"Invalid post notification request")
-        );
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid post notification request")};
     }
 
     NSString* requestId = [dialogRequestId(request) copy];
@@ -535,7 +529,7 @@ doof::Result<void, std::string> NativeWebShellApp::beginPostNotification(const s
         [requestId release];
         [title release];
         [options release];
-        return doof::Result<void, std::string>::failure("Notification title must not be empty");
+        return doof::Failure<std::string>{"Notification title must not be empty"};
     }
 
     NSString* notificationId = [stringOption(options, @"id") ?: requestId copy];
@@ -602,16 +596,14 @@ doof::Result<void, std::string> NativeWebShellApp::beginPostNotification(const s
             });
         }];
     }];
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginReadClipboardText(const std::string& requestJson) {
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(
-            detail::utf8FromString(parseError ?: @"Invalid read clipboard request")
-        );
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid read clipboard request")};
     }
 
     __block NSString* requestId = nil;
@@ -626,22 +618,20 @@ doof::Result<void, std::string> NativeWebShellApp::beginReadClipboardText(const 
     impl_->state->evaluateNativeResult(requestId, YES, text, nil);
     [requestId release];
     [text release];
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginWriteClipboardText(const std::string& requestJson) {
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(
-            detail::utf8FromString(parseError ?: @"Invalid write clipboard request")
-        );
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid write clipboard request")};
     }
 
     NSDictionary* options = dialogOptions(request);
     NSString* text = stringOption(options, @"text");
     if (text == nil) {
-        return doof::Result<void, std::string>::failure("Clipboard text must be a string");
+        return doof::Failure<std::string>{"Clipboard text must be a string"};
     }
 
     __block NSString* requestId = nil;
@@ -656,7 +646,7 @@ doof::Result<void, std::string> NativeWebShellApp::beginWriteClipboardText(const
     impl_->state->evaluateNativeResult(requestId, YES, @{ @"ok": @YES }, nil);
     [requestId release];
     [textCopy release];
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 void NativeWebShellApp::requestWake() {
@@ -684,7 +674,7 @@ doof::Result<void, std::string> NativeWebShellApp::run(
     {
         std::lock_guard<std::mutex> lock(state->mutex);
         if (state->running || state->stopped) {
-            return doof::Result<void, std::string>::failure("Web shell run() may only be called once");
+            return doof::Failure<std::string>{"Web shell run() may only be called once"};
         }
         state->running = true;
         state->onCall = std::move(onCall);
@@ -730,7 +720,7 @@ doof::Result<void, std::string> NativeWebShellApp::run(
         std::string error = detail::utf8FromString(installError);
         [installError release];
         dispatch_sync(dispatch_get_main_queue(), ^{ state->finish(error); });
-        return doof::Result<void, std::string>::failure(error);
+        return doof::Failure<std::string>{error};
     }
 
     state->drainEvents.call();
@@ -740,8 +730,8 @@ doof::Result<void, std::string> NativeWebShellApp::run(
     std::string error = state->terminalError;
     lock.unlock();
     state->drainEvents.call();
-    if (!error.empty()) return doof::Result<void, std::string>::failure(error);
-    return doof::Result<void, std::string>::success();
+    if (!error.empty()) return doof::Failure<std::string>{error};
+    return doof::Success<void>{};
 }
 
 }  // namespace doof_webshell

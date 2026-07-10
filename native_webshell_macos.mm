@@ -433,34 +433,34 @@ doof::Result<void, std::string> NativeWebShellApp::postEvent(const std::string& 
     auto state = impl_->state;
     {
         std::lock_guard<std::mutex> lock(state->mutex);
-        if (state->stopped) return doof::Result<void, std::string>::failure("Web shell has stopped");
+        if (state->stopped) return doof::Failure<std::string>{"Web shell has stopped"};
         if (!state->ready) {
             if (state->pendingEvents.size() >= kMaxPendingEvents) {
-                return doof::Result<void, std::string>::failure("Web shell pending event queue is full");
+                return doof::Failure<std::string>{"Web shell pending event queue is full"};
             }
             state->pendingEvents.push_back(eventJson);
-            return doof::Result<void, std::string>::success();
+            return doof::Success<void>{};
         }
     }
     dispatch_async(dispatch_get_main_queue(), ^{ state->evaluateEvent(eventJson); });
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginOpenFileDialog(const std::string& requestJson) {
     if (![NSThread isMainThread]) {
-        return doof::Result<void, std::string>::failure("Open file dialog must be started on the main thread");
+        return doof::Failure<std::string>{"Open file dialog must be started on the main thread"};
     }
     auto state = impl_->state;
     {
         std::lock_guard<std::mutex> lock(state->mutex);
-        if (state->stopped) return doof::Result<void, std::string>::failure("Web shell has stopped");
-        if (state->window == nil) return doof::Result<void, std::string>::failure("Web shell window is not ready");
+        if (state->stopped) return doof::Failure<std::string>{"Web shell has stopped"};
+        if (state->window == nil) return doof::Failure<std::string>{"Web shell window is not ready"};
     }
 
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(detail::utf8FromString(parseError ?: @"Invalid open file dialog request"));
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid open file dialog request")};
     }
 
     NSString* requestId = dialogRequestId(request);
@@ -489,24 +489,24 @@ doof::Result<void, std::string> NativeWebShellApp::beginOpenFileDialog(const std
         }
         state->evaluateNativeResult(requestId, YES, panel.URL.path ?: (id)NSNull.null, nil);
     }];
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginSaveFileDialog(const std::string& requestJson) {
     if (![NSThread isMainThread]) {
-        return doof::Result<void, std::string>::failure("Save file dialog must be started on the main thread");
+        return doof::Failure<std::string>{"Save file dialog must be started on the main thread"};
     }
     auto state = impl_->state;
     {
         std::lock_guard<std::mutex> lock(state->mutex);
-        if (state->stopped) return doof::Result<void, std::string>::failure("Web shell has stopped");
-        if (state->window == nil) return doof::Result<void, std::string>::failure("Web shell window is not ready");
+        if (state->stopped) return doof::Failure<std::string>{"Web shell has stopped"};
+        if (state->window == nil) return doof::Failure<std::string>{"Web shell window is not ready"};
     }
 
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(detail::utf8FromString(parseError ?: @"Invalid save file dialog request"));
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid save file dialog request")};
     }
 
     NSString* requestId = dialogRequestId(request);
@@ -526,14 +526,14 @@ doof::Result<void, std::string> NativeWebShellApp::beginSaveFileDialog(const std
         }
         state->evaluateNativeResult(requestId, YES, panel.URL.path ?: (id)NSNull.null, nil);
     }];
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::setMenuConfiguration(const std::string& menuJson) {
     NSString* error = nil;
     NSString* json = detail::stringFromUtf8(menuJson);
     if (menuDefinitionsFromJson(json, &error) == nil) {
-        return doof::Result<void, std::string>::failure(detail::utf8FromString(error ?: @"Invalid menu configuration"));
+        return doof::Failure<std::string>{detail::utf8FromString(error ?: @"Invalid menu configuration")};
     }
     impl_->menuConfigurationJson = menuJson;
     auto state = impl_->state;
@@ -552,16 +552,14 @@ doof::Result<void, std::string> NativeWebShellApp::setMenuConfiguration(const st
         [jsonCopy release];
         [titleCopy release];
     });
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginRequestNotificationPermission(const std::string& requestJson) {
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(
-            detail::utf8FromString(parseError ?: @"Invalid notification permission request")
-        );
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid notification permission request")};
     }
 
     NSString* requestId = [dialogRequestId(request) copy];
@@ -587,16 +585,14 @@ doof::Result<void, std::string> NativeWebShellApp::beginRequestNotificationPermi
             });
         }];
     }];
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginPostNotification(const std::string& requestJson) {
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(
-            detail::utf8FromString(parseError ?: @"Invalid post notification request")
-        );
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid post notification request")};
     }
 
     NSString* requestId = [dialogRequestId(request) copy];
@@ -606,7 +602,7 @@ doof::Result<void, std::string> NativeWebShellApp::beginPostNotification(const s
         [requestId release];
         [title release];
         [options release];
-        return doof::Result<void, std::string>::failure("Notification title must not be empty");
+        return doof::Failure<std::string>{"Notification title must not be empty"};
     }
 
     NSString* notificationId = [stringOption(options, @"id") ?: requestId copy];
@@ -672,38 +668,34 @@ doof::Result<void, std::string> NativeWebShellApp::beginPostNotification(const s
             });
         }];
     }];
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginReadClipboardText(const std::string& requestJson) {
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(
-            detail::utf8FromString(parseError ?: @"Invalid read clipboard request")
-        );
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid read clipboard request")};
     }
 
     NSString* requestId = dialogRequestId(request);
     NSString* text = [NSPasteboard.generalPasteboard stringForType:NSPasteboardTypeString] ?: @"";
     impl_->state->evaluateNativeResult(requestId, YES, text, nil);
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 doof::Result<void, std::string> NativeWebShellApp::beginWriteClipboardText(const std::string& requestJson) {
     NSString* parseError = nil;
     NSDictionary* request = parseDialogRequest(requestJson, &parseError);
     if (request == nil) {
-        return doof::Result<void, std::string>::failure(
-            detail::utf8FromString(parseError ?: @"Invalid write clipboard request")
-        );
+        return doof::Failure<std::string>{detail::utf8FromString(parseError ?: @"Invalid write clipboard request")};
     }
 
     NSString* requestId = dialogRequestId(request);
     NSDictionary* options = dialogOptions(request);
     NSString* text = stringOption(options, @"text");
     if (text == nil) {
-        return doof::Result<void, std::string>::failure("Clipboard text must be a string");
+        return doof::Failure<std::string>{"Clipboard text must be a string"};
     }
 
     NSPasteboard* pasteboard = NSPasteboard.generalPasteboard;
@@ -711,10 +703,10 @@ doof::Result<void, std::string> NativeWebShellApp::beginWriteClipboardText(const
     BOOL ok = [pasteboard setString:text forType:NSPasteboardTypeString];
     if (!ok) {
         impl_->state->evaluateNativeResult(requestId, NO, nil, @"Could not write text to clipboard");
-        return doof::Result<void, std::string>::success();
+        return doof::Success<void>{};
     }
     impl_->state->evaluateNativeResult(requestId, YES, @{ @"ok": @YES }, nil);
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 void NativeWebShellApp::requestWake() {
@@ -739,13 +731,13 @@ doof::Result<void, std::string> NativeWebShellApp::run(
     doof::callback<int32_t()> drainEvents
 ) {
     if (![NSThread isMainThread]) {
-        return doof::Result<void, std::string>::failure("The macOS web shell must run on the main thread");
+        return doof::Failure<std::string>{"The macOS web shell must run on the main thread"};
     }
     auto state = impl_->state;
     {
         std::lock_guard<std::mutex> lock(state->mutex);
         if (state->running || state->stopped) {
-            return doof::Result<void, std::string>::failure("Web shell run() may only be called once");
+            return doof::Failure<std::string>{"Web shell run() may only be called once"};
         }
         state->running = true;
         state->onCall = std::move(onCall);
@@ -760,7 +752,7 @@ doof::Result<void, std::string> NativeWebShellApp::run(
     NSString* htmlPath = detail::resolveHtmlPath(impl_->htmlPath);
     if (htmlPath == nil) {
         state->finish("Web shell HTML file was not found: " + impl_->htmlPath);
-        return doof::Result<void, std::string>::failure(state->terminalError);
+        return doof::Failure<std::string>{state->terminalError};
     }
     state->contentRoot = [[htmlPath stringByDeletingLastPathComponent] copy];
 
@@ -819,9 +811,9 @@ doof::Result<void, std::string> NativeWebShellApp::run(
     std::lock_guard<std::mutex> lock(state->mutex);
     state->running = false;
     if (!state->terminalError.empty()) {
-        return doof::Result<void, std::string>::failure(state->terminalError);
+        return doof::Failure<std::string>{state->terminalError};
     }
-    return doof::Result<void, std::string>::success();
+    return doof::Success<void>{};
 }
 
 }  // namespace doof_webshell
