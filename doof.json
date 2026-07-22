@@ -15,6 +15,7 @@
         "frameworks": [
           "Cocoa",
           "Foundation",
+          "UniformTypeIdentifiers",
           "UserNotifications",
           "WebKit"
         ]

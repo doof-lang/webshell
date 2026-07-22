@@ -35,7 +35,7 @@ export class WebShellApp {
     return this
   }
 
-  postEvent(name: string, payload: JsonValue = null): Result<void, string> {
+  postEvent(name: string, payload: JsonValue = none): Result<none, string> {
     if name.length == 0 {
       panic("Web shell event name must not be empty")
     }
@@ -45,40 +45,40 @@ export class WebShellApp {
     return native.postEvent(formatJsonValue(event))
   }
 
-  beginOpenFileDialog(requestJson: string): Result<void, string> {
+  beginOpenFileDialog(requestJson: string): Result<none, string> {
     return native.beginOpenFileDialog(requestJson)
   }
 
-  beginSaveFileDialog(requestJson: string): Result<void, string> {
+  beginSaveFileDialog(requestJson: string): Result<none, string> {
     return native.beginSaveFileDialog(requestJson)
   }
 
-  setMenuConfiguration(menuJson: string): Result<void, string> {
+  setMenuConfiguration(menuJson: string): Result<none, string> {
     return native.setMenuConfiguration(menuJson)
   }
 
-  beginRequestNotificationPermission(requestJson: string): Result<void, string> {
+  beginRequestNotificationPermission(requestJson: string): Result<none, string> {
     return native.beginRequestNotificationPermission(requestJson)
   }
 
-  beginPostNotification(requestJson: string): Result<void, string> {
+  beginPostNotification(requestJson: string): Result<none, string> {
     return native.beginPostNotification(requestJson)
   }
 
-  beginReadClipboardText(requestJson: string): Result<void, string> {
+  beginReadClipboardText(requestJson: string): Result<none, string> {
     return native.beginReadClipboardText(requestJson)
   }
 
-  beginWriteClipboardText(requestJson: string): Result<void, string> {
+  beginWriteClipboardText(requestJson: string): Result<none, string> {
     return native.beginWriteClipboardText(requestJson)
   }
 
-  stop(): void {
+  stop(): none {
     native.stop()
   }
 
-  run(): Result<void, string> {
-    setMainEventWakeHandler((): void => native.requestWake())
+  run(): Result<none, string> {
+    setMainEventWakeHandler((): none => native.requestWake())
     result := native.run(
       (requestJson: string): string => bridge.dispatch(requestJson),
       (): int => drainMainEventLoop(),

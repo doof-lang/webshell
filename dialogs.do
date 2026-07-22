@@ -5,7 +5,7 @@ import { WebShellApp } from "./app"
 readonly OPEN_FILE_BINDING = "__webshell.native.openFile"
 readonly SAVE_FILE_BINDING = "__webshell.native.saveFile"
 
-export function installWebShellDialogs(app: WebShellApp): void {
+export function installWebShellDialogs(app: WebShellApp): none {
   app.bind(OPEN_FILE_BINDING, (params: JsonValue): Result<JsonValue, string> => {
     try requestJson := validateNativeDialogRequest(params, "openFile")
     try app.beginOpenFileDialog(requestJson)
@@ -36,7 +36,7 @@ export function validateNativeDialogRequest(params: JsonValue, operation: string
 
   if object.has("options") {
     options := object.get("options")!
-    if options != null {
+    if options != none {
       _ := options as JsonObject else {
         return Failure(operation + " options must be an object when provided")
       }

@@ -5,7 +5,7 @@ import { WebShellApp } from "./app"
 readonly REQUEST_PERMISSION_BINDING = "__webshell.native.requestNotificationPermission"
 readonly POST_NOTIFICATION_BINDING = "__webshell.native.postNotification"
 
-export function installWebShellNotifications(app: WebShellApp): void {
+export function installWebShellNotifications(app: WebShellApp): none {
   app.bind(REQUEST_PERMISSION_BINDING, (params: JsonValue): Result<JsonValue, string> => {
     try requestJson := validateNotificationPermissionRequest(params)
     try app.beginRequestNotificationPermission(requestJson)
@@ -48,7 +48,7 @@ function validateNotificationRequest(
 
   if object.has("options") {
     options := object.get("options")!
-    if options != null {
+    if options != none {
       optionsObject := options as JsonObject else {
         return Failure(operation + " options must be an object when provided")
       }
@@ -65,7 +65,7 @@ function validateNotificationRequest(
       }
       if optionsObject.has("userInfo") {
         userInfo := optionsObject.get("userInfo")!
-        if userInfo != null {
+        if userInfo != none {
           _ := userInfo as JsonObject else {
             return Failure(operation + " userInfo must be an object when provided")
           }

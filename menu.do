@@ -14,7 +14,7 @@ export class WebShellMenu {
   readonly items: WebShellMenuItem[] = []
 }
 
-export function configureWebShellMenus(app: WebShellApp, menus: WebShellMenu[]): Result<void, string> {
+export function configureWebShellMenus(app: WebShellApp, menus: WebShellMenu[]): Result<none, string> {
   try menuJson := renderWebShellMenuConfiguration(menus)
   return app.setMenuConfiguration(menuJson)
 }

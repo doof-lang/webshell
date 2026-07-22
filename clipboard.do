@@ -5,7 +5,7 @@ import { WebShellApp } from "./app"
 readonly READ_TEXT_BINDING = "__webshell.native.readClipboardText"
 readonly WRITE_TEXT_BINDING = "__webshell.native.writeClipboardText"
 
-export function installWebShellClipboard(app: WebShellApp): void {
+export function installWebShellClipboard(app: WebShellApp): none {
   app.bind(READ_TEXT_BINDING, (params: JsonValue): Result<JsonValue, string> => {
     try requestJson := validateClipboardReadTextRequest(params)
     try app.beginReadClipboardText(requestJson)
@@ -48,7 +48,7 @@ function validateClipboardRequest(
 
   if object.has("options") {
     options := object.get("options")!
-    if options != null {
+    if options != none {
       optionsObject := options as JsonObject else {
         return Failure(operation + " options must be an object when provided")
       }

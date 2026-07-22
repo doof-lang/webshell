@@ -5,7 +5,7 @@ export type WebShellHandler = (params: JsonValue): Result<JsonValue, string>
 export class WebShellBridgeRegistry {
   private handlers: Map<string, WebShellHandler> = {}
 
-  bind(name: string, handler: WebShellHandler): void {
+  bind(name: string, handler: WebShellHandler): none {
     if name.length == 0 {
       panic("Web shell binding name must not be empty")
     }
@@ -33,7 +33,7 @@ export class WebShellBridgeRegistry {
       return failureResponse(id, "Invalid bridge request: name must be a string")
     }
 
-    let params: JsonValue = null
+    let params: JsonValue = none
     if object.has("params") {
       params = object.get("params")!
     }

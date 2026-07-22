@@ -2,6 +2,7 @@
 #include "native_webshell_shared.hpp"
 
 #import <AppKit/AppKit.h>
+#import <UniformTypeIdentifiers/UniformTypeIdentifiers.h>
 #import <UserNotifications/UserNotifications.h>
 #import <WebKit/WebKit.h>
 #import <dispatch/dispatch.h>
@@ -55,6 +56,15 @@ NSArray<NSString*>* stringArrayOption(NSDictionary* options, NSString* key) {
         if ([item isKindOfClass:NSString.class] && [item length] > 0) [strings addObject:item];
     }
     return strings;
+}
+
+NSArray<UTType*>* contentTypesOption(NSDictionary* options, NSString* key) {
+    NSMutableArray<UTType*>* contentTypes = [NSMutableArray array];
+    for (NSString* extension in stringArrayOption(options, key)) {
+        UTType* contentType = [UTType typeWithFilenameExtension:extension];
+        if (contentType != nil) [contentTypes addObject:contentType];
+    }
+    return contentTypes;
 }
 
 double doubleOption(NSDictionary* options, NSString* key, double fallback) {
@@ -300,14 +310,9 @@ struct RuntimeState {
          withCompletionHandler:(void (^)(UNNotificationPresentationOptions options))completionHandler {
     (void)center;
     (void)notification;
-    if (@available(macOS 11.0, *)) {
-        completionHandler(UNNotificationPresentationOptionBanner |
-                          UNNotificationPresentationOptionList |
-                          UNNotificationPresentationOptionSound);
-    } else {
-        completionHandler(UNNotificationPresentationOptionAlert |
-                          UNNotificationPresentationOptionSound);
-    }
+    completionHandler(UNNotificationPresentationOptionBanner |
+                      UNNotificationPresentationOptionList |
+                      UNNotificationPresentationOptionSound);
 }
 
 - (void)userNotificationCenter:(UNUserNotificationCenter*)center
@@ -471,8 +476,8 @@ doof::Result<void, std::string> NativeWebShellApp::beginOpenFileDialog(const std
     panel.canChooseFiles = !panel.canChooseDirectories || boolOption(options, @"files", YES);
     NSString* title = stringOption(options, @"title");
     if (title != nil) panel.title = title;
-    NSArray<NSString*>* types = stringArrayOption(options, @"types");
-    if (types.count > 0) panel.allowedFileTypes = types;
+    NSArray<UTType*>* contentTypes = contentTypesOption(options, @"types");
+    if (contentTypes.count > 0) panel.allowedContentTypes = contentTypes;
 
     [panel beginSheetModalForWindow:state->window completionHandler:^(NSModalResponse result) {
         if (result != NSModalResponseOK) {
@@ -516,8 +521,8 @@ doof::Result<void, std::string> NativeWebShellApp::beginSaveFileDialog(const std
     if (title != nil) panel.title = title;
     NSString* suggestedName = stringOption(options, @"suggestedName");
     if (suggestedName != nil) panel.nameFieldStringValue = suggestedName;
-    NSArray<NSString*>* types = stringArrayOption(options, @"types");
-    if (types.count > 0) panel.allowedFileTypes = types;
+    NSArray<UTType*>* contentTypes = contentTypesOption(options, @"types");
+    if (contentTypes.count > 0) panel.allowedContentTypes = contentTypes;
 
     [panel beginSheetModalForWindow:state->window completionHandler:^(NSModalResponse result) {
         if (result != NSModalResponseOK) {

@@ -22,7 +22,7 @@ function responseObject(text: string): JsonObject {
   return try! value as JsonObject
 }
 
-export function testDispatchesBindingWithParams(): void {
+export function testDispatchesBindingWithParams(): none {
   registry := WebShellBridgeRegistry {}
   registry.bind("echo", (params: JsonValue): Result<JsonValue, string> => Success(params))
 
@@ -33,21 +33,21 @@ export function testDispatchesBindingWithParams(): void {
   Assert.equal(value.get("ok")!, true)
 }
 
-export function testDefaultsOmittedParamsToNull(): void {
+export function testDefaultsOmittedParamsToNull(): none {
   registry := WebShellBridgeRegistry {}
   let received: JsonValue = false
   registry.bind("empty", (params: JsonValue): Result<JsonValue, string> => {
     received = params
-    return Success(null)
+    return Success(none)
   })
 
   response := responseObject(registry.dispatch("{\"id\":\"2\",\"name\":\"empty\"}"))
-  Assert.equal(received, null)
+  Assert.equal(received, none)
   Assert.equal(response.get("ok")!, true)
-  Assert.equal(response.get("value")!, null)
+  Assert.equal(response.get("value")!, none)
 }
 
-export function testBindingReplacement(): void {
+export function testBindingReplacement(): none {
   registry := WebShellBridgeRegistry {}
   registry.bind("value", (params: JsonValue): Result<JsonValue, string> => Success("old"))
   registry.bind("value", (params: JsonValue): Result<JsonValue, string> => Success("new"))
@@ -56,7 +56,7 @@ export function testBindingReplacement(): void {
   Assert.equal(response.get("value")!, "new")
 }
 
-export function testReportsHandlerFailure(): void {
+export function testReportsHandlerFailure(): none {
   registry := WebShellBridgeRegistry {}
   registry.bind("fail", (params: JsonValue): Result<JsonValue, string> => Failure("nope"))
 
@@ -65,14 +65,14 @@ export function testReportsHandlerFailure(): void {
   Assert.equal(response.get("error")!, "nope")
 }
 
-export function testReportsUnknownBinding(): void {
+export function testReportsUnknownBinding(): none {
   registry := WebShellBridgeRegistry {}
   response := responseObject(registry.dispatch("{\"id\":\"5\",\"name\":\"missing\"}"))
   Assert.equal(response.get("ok")!, false)
   Assert.equal(response.get("error")!, "No Doof binding registered for 'missing'")
 }
 
-export function testReportsMalformedRequests(): void {
+export function testReportsMalformedRequests(): none {
   registry := WebShellBridgeRegistry {}
   malformed := responseObject(registry.dispatch("not json"))
   Assert.equal(malformed.get("ok")!, false)
@@ -82,7 +82,7 @@ export function testReportsMalformedRequests(): void {
   Assert.equal(missingName.get("ok")!, false)
 }
 
-export function testValidatesNativeDialogRequests(): void {
+export function testValidatesNativeDialogRequests(): none {
   request := try! validateNativeDialogRequest({ id: "dialog-1", options: { multiple: true } }, "openFile")
   parsed := responseObject(request)
   Assert.equal(parsed.get("id")!, "dialog-1")
@@ -102,7 +102,7 @@ export function testValidatesNativeDialogRequests(): void {
   }
 }
 
-export function testRendersMenuConfiguration(): void {
+export function testRendersMenuConfiguration(): none {
   config := try! renderWebShellMenuConfiguration([
     WebShellMenu {
       title: "File",
@@ -132,7 +132,7 @@ export function testRendersMenuConfiguration(): void {
   Assert.equal(item.get("enabled")!, false)
 }
 
-export function testRejectsInvalidMenuConfiguration(): void {
+export function testRejectsInvalidMenuConfiguration(): none {
   result := renderWebShellMenuConfiguration([
     WebShellMenu {
       title: "File",
@@ -151,7 +151,7 @@ export function testRejectsInvalidMenuConfiguration(): void {
   }
 }
 
-export function testValidatesNotificationPermissionRequests(): void {
+export function testValidatesNotificationPermissionRequests(): none {
   request := try! validateNotificationPermissionRequest({
     id: "notify-permission",
     options: {
@@ -173,7 +173,7 @@ export function testValidatesNotificationPermissionRequests(): void {
   }
 }
 
-export function testValidatesPostNotificationRequests(): void {
+export function testValidatesPostNotificationRequests(): none {
   request := try! validatePostNotificationRequest({
     id: "notify-post",
     options: {
@@ -221,7 +221,7 @@ export function testValidatesPostNotificationRequests(): void {
   }
 }
 
-export function testValidatesClipboardRequests(): void {
+export function testValidatesClipboardRequests(): none {
   readRequest := try! validateClipboardReadTextRequest({ id: "clipboard-read", options: {} })
   readParsed := responseObject(readRequest)
   Assert.equal(readParsed.get("id")!, "clipboard-read")
