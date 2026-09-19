@@ -16,7 +16,7 @@ application resources or at the resolved filesystem path.
 
 Doof bindings are registered with `app.bind(name, handler)`. JavaScript calls
 them with `doof.call(name, params)`. Parameters and return values are
-`JsonValue`; handler failures reject the JavaScript promise with the returned
+`SerialValue`; handler failures reject the JavaScript promise with the returned
 error string.
 
 Doof can send page events with `app.postEvent(name, payload)`. JavaScript

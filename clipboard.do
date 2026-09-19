@@ -6,33 +6,33 @@ readonly READ_TEXT_BINDING = "__webshell.native.readClipboardText"
 readonly WRITE_TEXT_BINDING = "__webshell.native.writeClipboardText"
 
 export function installWebShellClipboard(app: WebShellApp): none {
-  app.bind(READ_TEXT_BINDING, (params: JsonValue): Result<JsonValue, string> => {
+  app.bind(READ_TEXT_BINDING, (params: SerialValue): Result<SerialValue, string> => {
     try requestJson := validateClipboardReadTextRequest(params)
     try app.beginReadClipboardText(requestJson)
     return Success(nativeAcceptedValue(params))
   })
 
-  app.bind(WRITE_TEXT_BINDING, (params: JsonValue): Result<JsonValue, string> => {
+  app.bind(WRITE_TEXT_BINDING, (params: SerialValue): Result<SerialValue, string> => {
     try requestJson := validateClipboardWriteTextRequest(params)
     try app.beginWriteClipboardText(requestJson)
     return Success(nativeAcceptedValue(params))
   })
 }
 
-export function validateClipboardReadTextRequest(params: JsonValue): Result<string, string> {
+export function validateClipboardReadTextRequest(params: SerialValue): Result<string, string> {
   return validateClipboardRequest(params, "readClipboardText", false)
 }
 
-export function validateClipboardWriteTextRequest(params: JsonValue): Result<string, string> {
+export function validateClipboardWriteTextRequest(params: SerialValue): Result<string, string> {
   return validateClipboardRequest(params, "writeClipboardText", true)
 }
 
 function validateClipboardRequest(
-  params: JsonValue,
+  params: SerialValue,
   operation: string,
   requiresText: bool,
 ): Result<string, string> {
-  object := params as JsonObject else {
+  object := params as SerialObject else {
     return Failure(operation + " request must be an object")
   }
 
@@ -49,7 +49,7 @@ function validateClipboardRequest(
   if object.has("options") {
     options := object.get("options")!
     if options != none {
-      optionsObject := options as JsonObject else {
+      optionsObject := options as SerialObject else {
         return Failure(operation + " options must be an object when provided")
       }
       if requiresText {
@@ -70,10 +70,10 @@ function validateClipboardRequest(
   return Success(formatJsonValue(object))
 }
 
-function nativeAcceptedValue(params: JsonValue): JsonValue {
-  object := try! params as JsonObject
+function nativeAcceptedValue(params: SerialValue): SerialValue {
+  object := try! params as SerialObject
   id := try! object.get("id")! as string
-  response: JsonObject := {}
+  response: SerialObject := {}
   response.set("id", id)
   response.set("accepted", true)
   return response

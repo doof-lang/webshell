@@ -20,16 +20,16 @@ export function configureWebShellMenus(app: WebShellApp, menus: WebShellMenu[]):
 }
 
 export function renderWebShellMenuConfiguration(menus: WebShellMenu[]): Result<string, string> {
-  let menuValues: JsonValue[] = []
+  let menuValues: SerialValue[] = []
   for menu of menus {
     if menu.title.length == 0 {
       return Failure("Web shell menu title must not be empty")
     }
 
-    menuObject: JsonObject := {}
+    menuObject: SerialObject := {}
     menuObject.set("title", menu.title)
 
-    let itemValues: JsonValue[] = []
+    let itemValues: SerialValue[] = []
     for item of menu.items {
       if item.id.length == 0 {
         return Failure("Web shell menu item id must not be empty")
@@ -38,7 +38,7 @@ export function renderWebShellMenuConfiguration(menus: WebShellMenu[]): Result<s
         return Failure("Web shell menu item title must not be empty")
       }
 
-      itemObject: JsonObject := {}
+      itemObject: SerialObject := {}
       itemObject.set("id", item.id)
       itemObject.set("title", item.title)
       itemObject.set("shortcut", item.shortcut)
@@ -50,7 +50,7 @@ export function renderWebShellMenuConfiguration(menus: WebShellMenu[]): Result<s
     menuValues.push(menuObject)
   }
 
-  root: JsonObject := {}
+  root: SerialObject := {}
   root.set("menus", menuValues)
   return Success(formatJsonValue(root))
 }

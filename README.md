@@ -34,7 +34,7 @@ function main(): int {
     },
   }
 
-  app.bind("greet", (params: JsonValue): Result<JsonValue, string> => {
+  app.bind("greet", (params: SerialValue): Result<SerialValue, string> => {
     name := params as string else {
       return Failure("greet expects a string")
     }
@@ -251,7 +251,7 @@ against the current working directory and app resources.
 
 Register a bridge handler callable from JavaScript as `doof.call(name, params)`.
 
-Handlers receive a `JsonValue` and return `Result<JsonValue, string>`.
+Handlers receive a `SerialValue` and return `Result<SerialValue, string>`.
 
 ### `WebShellApp.postEvent(name, payload?)`
 

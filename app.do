@@ -35,11 +35,11 @@ export class WebShellApp {
     return this
   }
 
-  postEvent(name: string, payload: JsonValue = none): Result<none, string> {
+  postEvent(name: string, payload: SerialValue = none): Result<none, string> {
     if name.length == 0 {
       panic("Web shell event name must not be empty")
     }
-    event: JsonObject := {}
+    event: SerialObject := {}
     event.set("name", name)
     event.set("payload", payload)
     return native.postEvent(formatJsonValue(event))

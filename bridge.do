@@ -1,6 +1,6 @@
 import { formatJsonValue, parseJsonValue } from "std/json"
 
-export type WebShellHandler = (params: JsonValue): Result<JsonValue, string>
+export type WebShellHandler = (params: SerialValue): Result<SerialValue, string>
 
 export class WebShellBridgeRegistry {
   private handlers: Map<string, WebShellHandler> = {}
@@ -16,7 +16,7 @@ export class WebShellBridgeRegistry {
     request := parseJsonValue(requestJson) else error {
       return failureResponse("", "Invalid bridge request JSON: " + error)
     }
-    object := request as JsonObject else error {
+    object := request as SerialObject else error {
       return failureResponse("", "Invalid bridge request: " + error)
     }
 
@@ -33,7 +33,7 @@ export class WebShellBridgeRegistry {
       return failureResponse(id, "Invalid bridge request: name must be a string")
     }
 
-    let params: JsonValue = none
+    let params: SerialValue = none
     if object.has("params") {
       params = object.get("params")!
     }
@@ -48,8 +48,8 @@ export class WebShellBridgeRegistry {
   }
 }
 
-function successResponse(id: string, value: JsonValue): string {
-  response: JsonObject := {}
+function successResponse(id: string, value: SerialValue): string {
+  response: SerialObject := {}
   response.set("id", id)
   response.set("ok", true)
   response.set("value", value)
@@ -57,7 +57,7 @@ function successResponse(id: string, value: JsonValue): string {
 }
 
 function failureResponse(id: string, error: string): string {
-  response: JsonObject := {}
+  response: SerialObject := {}
   response.set("id", id)
   response.set("ok", false)
   response.set("error", error)

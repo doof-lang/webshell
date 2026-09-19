@@ -47,7 +47,7 @@ function main(): int {
     return 1
   }
 
-  app.bind("greet", (params: JsonValue): Result<JsonValue, string> => {
+  app.bind("greet", (params: SerialValue): Result<SerialValue, string> => {
     name := params as string else {
       return Failure("greet expects a string name")
     }

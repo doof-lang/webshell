@@ -6,21 +6,21 @@ readonly OPEN_FILE_BINDING = "__webshell.native.openFile"
 readonly SAVE_FILE_BINDING = "__webshell.native.saveFile"
 
 export function installWebShellDialogs(app: WebShellApp): none {
-  app.bind(OPEN_FILE_BINDING, (params: JsonValue): Result<JsonValue, string> => {
+  app.bind(OPEN_FILE_BINDING, (params: SerialValue): Result<SerialValue, string> => {
     try requestJson := validateNativeDialogRequest(params, "openFile")
     try app.beginOpenFileDialog(requestJson)
     return Success(nativeAcceptedValue(params))
   })
 
-  app.bind(SAVE_FILE_BINDING, (params: JsonValue): Result<JsonValue, string> => {
+  app.bind(SAVE_FILE_BINDING, (params: SerialValue): Result<SerialValue, string> => {
     try requestJson := validateNativeDialogRequest(params, "saveFile")
     try app.beginSaveFileDialog(requestJson)
     return Success(nativeAcceptedValue(params))
   })
 }
 
-export function validateNativeDialogRequest(params: JsonValue, operation: string): Result<string, string> {
-  object := params as JsonObject else {
+export function validateNativeDialogRequest(params: SerialValue, operation: string): Result<string, string> {
+  object := params as SerialObject else {
     return Failure(operation + " request must be an object")
   }
 
@@ -37,7 +37,7 @@ export function validateNativeDialogRequest(params: JsonValue, operation: string
   if object.has("options") {
     options := object.get("options")!
     if options != none {
-      _ := options as JsonObject else {
+      _ := options as SerialObject else {
         return Failure(operation + " options must be an object when provided")
       }
     }
@@ -46,10 +46,10 @@ export function validateNativeDialogRequest(params: JsonValue, operation: string
   return Success(formatJsonValue(object))
 }
 
-function nativeAcceptedValue(params: JsonValue): JsonValue {
-  object := try! params as JsonObject
+function nativeAcceptedValue(params: SerialValue): SerialValue {
+  object := try! params as SerialObject
   id := try! object.get("id")! as string
-  response: JsonObject := {}
+  response: SerialObject := {}
   response.set("id", id)
   response.set("accepted", true)
   return response

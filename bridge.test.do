@@ -17,26 +17,26 @@ import {
   validatePostNotificationRequest,
 } from "./notifications"
 
-function responseObject(text: string): JsonObject {
+function responseObject(text: string): SerialObject {
   value := try! parseJsonValue(text)
-  return try! value as JsonObject
+  return try! value as SerialObject
 }
 
 export function testDispatchesBindingWithParams(): none {
   registry := WebShellBridgeRegistry {}
-  registry.bind("echo", (params: JsonValue): Result<JsonValue, string> => Success(params))
+  registry.bind("echo", (params: SerialValue): Result<SerialValue, string> => Success(params))
 
   response := responseObject(registry.dispatch("{\"id\":\"1\",\"name\":\"echo\",\"params\":{\"ok\":true}}"))
   Assert.equal(response.get("id")!, "1")
   Assert.equal(response.get("ok")!, true)
-  value := try! response.get("value")! as JsonObject
+  value := try! response.get("value")! as SerialObject
   Assert.equal(value.get("ok")!, true)
 }
 
 export function testDefaultsOmittedParamsToNull(): none {
   registry := WebShellBridgeRegistry {}
-  let received: JsonValue = false
-  registry.bind("empty", (params: JsonValue): Result<JsonValue, string> => {
+  let received: SerialValue = false
+  registry.bind("empty", (params: SerialValue): Result<SerialValue, string> => {
     received = params
     return Success(none)
   })
@@ -49,8 +49,8 @@ export function testDefaultsOmittedParamsToNull(): none {
 
 export function testBindingReplacement(): none {
   registry := WebShellBridgeRegistry {}
-  registry.bind("value", (params: JsonValue): Result<JsonValue, string> => Success("old"))
-  registry.bind("value", (params: JsonValue): Result<JsonValue, string> => Success("new"))
+  registry.bind("value", (params: SerialValue): Result<SerialValue, string> => Success("old"))
+  registry.bind("value", (params: SerialValue): Result<SerialValue, string> => Success("new"))
 
   response := responseObject(registry.dispatch("{\"id\":\"3\",\"name\":\"value\"}"))
   Assert.equal(response.get("value")!, "new")
@@ -58,7 +58,7 @@ export function testBindingReplacement(): none {
 
 export function testReportsHandlerFailure(): none {
   registry := WebShellBridgeRegistry {}
-  registry.bind("fail", (params: JsonValue): Result<JsonValue, string> => Failure("nope"))
+  registry.bind("fail", (params: SerialValue): Result<SerialValue, string> => Failure("nope"))
 
   response := responseObject(registry.dispatch("{\"id\":\"4\",\"name\":\"fail\"}"))
   Assert.equal(response.get("ok")!, false)
@@ -86,7 +86,7 @@ export function testValidatesNativeDialogRequests(): none {
   request := try! validateNativeDialogRequest({ id: "dialog-1", options: { multiple: true } }, "openFile")
   parsed := responseObject(request)
   Assert.equal(parsed.get("id")!, "dialog-1")
-  options := try! parsed.get("options")! as JsonObject
+  options := try! parsed.get("options")! as SerialObject
   Assert.equal(options.get("multiple")!, true)
 
   missing := validateNativeDialogRequest({}, "openFile")
@@ -123,11 +123,11 @@ export function testRendersMenuConfiguration(): none {
   ])
 
   parsed := responseObject(config)
-  menus := try! parsed.get("menus")! as JsonValue[]
-  menu := try! menus[0] as JsonObject
+  menus := try! parsed.get("menus")! as SerialValue[]
+  menu := try! menus[0] as SerialObject
   Assert.equal(menu.get("title")!, "File")
-  items := try! menu.get("items")! as JsonValue[]
-  item := try! items[1] as JsonObject
+  items := try! menu.get("items")! as SerialValue[]
+  item := try! items[1] as SerialObject
   Assert.equal(item.get("id")!, "save")
   Assert.equal(item.get("enabled")!, false)
 }
@@ -163,7 +163,7 @@ export function testValidatesNotificationPermissionRequests(): none {
 
   parsed := responseObject(request)
   Assert.equal(parsed.get("id")!, "notify-permission")
-  options := try! parsed.get("options")! as JsonObject
+  options := try! parsed.get("options")! as SerialObject
   Assert.equal(options.get("sound")!, false)
 
   invalid := validateNotificationPermissionRequest({ id: "bad", options: true })
@@ -191,7 +191,7 @@ export function testValidatesPostNotificationRequests(): none {
   })
 
   parsed := responseObject(request)
-  options := try! parsed.get("options")! as JsonObject
+  options := try! parsed.get("options")! as SerialObject
   Assert.equal(options.get("id")!, "custom-notification")
   Assert.equal(options.get("title")!, "Build complete")
   Assert.equal(options.get("subtitle")!, "WebShell")
@@ -199,7 +199,7 @@ export function testValidatesPostNotificationRequests(): none {
   Assert.equal(options.get("sound")!, false)
   Assert.equal(options.get("badge")!, 2)
   Assert.equal(options.get("delaySeconds")!, 1.5)
-  userInfo := try! options.get("userInfo")! as JsonObject
+  userInfo := try! options.get("userInfo")! as SerialObject
   Assert.equal(userInfo.get("source")!, "test")
 
   missingTitle := validatePostNotificationRequest({ id: "notify-post", options: {} })
@@ -233,7 +233,7 @@ export function testValidatesClipboardRequests(): none {
     },
   })
   writeParsed := responseObject(writeRequest)
-  options := try! writeParsed.get("options")! as JsonObject
+  options := try! writeParsed.get("options")! as SerialObject
   Assert.equal(options.get("text")!, "hello clipboard")
 
   missingText := validateClipboardWriteTextRequest({ id: "clipboard-write", options: {} })
