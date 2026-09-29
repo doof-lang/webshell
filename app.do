@@ -39,9 +39,7 @@ export class WebShellApp {
     if name.length == 0 {
       panic("Web shell event name must not be empty")
     }
-    event: SerialObject := {}
-    event.set("name", name)
-    event.set("payload", payload)
+    event: SerialObject := { "name": name, "payload": payload }
     return native.postEvent(formatJsonValue(event))
   }
 

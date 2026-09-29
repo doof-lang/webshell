@@ -49,17 +49,11 @@ export class WebShellBridgeRegistry {
 }
 
 function successResponse(id: string, value: SerialValue): string {
-  response: SerialObject := {}
-  response.set("id", id)
-  response.set("ok", true)
-  response.set("value", value)
+  response: SerialObject := { "id": id, "ok": true, "value": value }
   return formatJsonValue(response)
 }
 
 function failureResponse(id: string, error: string): string {
-  response: SerialObject := {}
-  response.set("id", id)
-  response.set("ok", false)
-  response.set("error", error)
+  response: SerialObject := { "id": id, "ok": false, "error": error }
   return formatJsonValue(response)
 }

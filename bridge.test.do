@@ -123,10 +123,10 @@ export function testRendersMenuConfiguration(): none {
   ])
 
   parsed := responseObject(config)
-  menus := try! parsed.get("menus")! as SerialValue[]
+  menus := try! parsed.get("menus")! as readonly SerialValue[]
   menu := try! menus[0] as SerialObject
   Assert.equal(menu.get("title")!, "File")
-  items := try! menu.get("items")! as SerialValue[]
+  items := try! menu.get("items")! as readonly SerialValue[]
   item := try! items[1] as SerialObject
   Assert.equal(item.get("id")!, "save")
   Assert.equal(item.get("enabled")!, false)

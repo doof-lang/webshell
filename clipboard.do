@@ -73,8 +73,6 @@ function validateClipboardRequest(
 function nativeAcceptedValue(params: SerialValue): SerialValue {
   object := try! params as SerialObject
   id := try! object.get("id")! as string
-  response: SerialObject := {}
-  response.set("id", id)
-  response.set("accepted", true)
+  response: SerialObject := { "id": id, "accepted": true }
   return response
 }

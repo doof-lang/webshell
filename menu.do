@@ -26,9 +26,6 @@ export function renderWebShellMenuConfiguration(menus: WebShellMenu[]): Result<s
       return Failure("Web shell menu title must not be empty")
     }
 
-    menuObject: SerialObject := {}
-    menuObject.set("title", menu.title)
-
     let itemValues: SerialValue[] = []
     for item of menu.items {
       if item.id.length == 0 {
@@ -38,19 +35,14 @@ export function renderWebShellMenuConfiguration(menus: WebShellMenu[]): Result<s
         return Failure("Web shell menu item title must not be empty")
       }
 
-      itemObject: SerialObject := {}
-      itemObject.set("id", item.id)
-      itemObject.set("title", item.title)
-      itemObject.set("shortcut", item.shortcut)
-      itemObject.set("enabled", item.enabled)
+      itemObject: SerialObject := { "id": item.id, "title": item.title, "shortcut": item.shortcut, "enabled": item.enabled }
       itemValues.push(itemObject)
     }
 
-    menuObject.set("items", itemValues)
+    menuObject: SerialObject := { "title": menu.title, "items": itemValues.drainToReadonly() }
     menuValues.push(menuObject)
   }
 
-  root: SerialObject := {}
-  root.set("menus", menuValues)
+  root: SerialObject := { "menus": menuValues.drainToReadonly() }
   return Success(formatJsonValue(root))
 }
