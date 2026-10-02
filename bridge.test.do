@@ -18,8 +18,8 @@ import {
 } from "./notifications"
 
 function responseObject(text: string): SerialObject {
-  value := try! parseJsonValue(text)
-  return try! value as SerialObject
+  value := parseJsonValue(text)!
+  return (value as SerialObject)!
 }
 
 export function testDispatchesBindingWithParams(): none {
@@ -29,7 +29,7 @@ export function testDispatchesBindingWithParams(): none {
   response := responseObject(registry.dispatch("{\"id\":\"1\",\"name\":\"echo\",\"params\":{\"ok\":true}}"))
   Assert.equal(response.get("id")!, "1")
   Assert.equal(response.get("ok")!, true)
-  value := try! response.get("value")! as SerialObject
+  value := (response.get("value")! as SerialObject)!
   Assert.equal(value.get("ok")!, true)
 }
 
@@ -83,10 +83,10 @@ export function testReportsMalformedRequests(): none {
 }
 
 export function testValidatesNativeDialogRequests(): none {
-  request := try! validateNativeDialogRequest({ id: "dialog-1", options: { multiple: true } }, "openFile")
+  request := validateNativeDialogRequest({ id: "dialog-1", options: { multiple: true } }, "openFile")!
   parsed := responseObject(request)
   Assert.equal(parsed.get("id")!, "dialog-1")
-  options := try! parsed.get("options")! as SerialObject
+  options := (parsed.get("options")! as SerialObject)!
   Assert.equal(options.get("multiple")!, true)
 
   missing := validateNativeDialogRequest({}, "openFile")
@@ -103,7 +103,7 @@ export function testValidatesNativeDialogRequests(): none {
 }
 
 export function testRendersMenuConfiguration(): none {
-  config := try! renderWebShellMenuConfiguration([
+  config := renderWebShellMenuConfiguration([
     WebShellMenu {
       title: "File",
       items: [
@@ -120,14 +120,14 @@ export function testRendersMenuConfiguration(): none {
         },
       ],
     },
-  ])
+  ])!
 
   parsed := responseObject(config)
-  menus := try! parsed.get("menus")! as readonly SerialValue[]
-  menu := try! menus[0] as SerialObject
+  menus := (parsed.get("menus")! as readonly SerialValue[])!
+  menu := (menus[0] as SerialObject)!
   Assert.equal(menu.get("title")!, "File")
-  items := try! menu.get("items")! as readonly SerialValue[]
-  item := try! items[1] as SerialObject
+  items := (menu.get("items")! as readonly SerialValue[])!
+  item := (items[1] as SerialObject)!
   Assert.equal(item.get("id")!, "save")
   Assert.equal(item.get("enabled")!, false)
 }
@@ -152,18 +152,18 @@ export function testRejectsInvalidMenuConfiguration(): none {
 }
 
 export function testValidatesNotificationPermissionRequests(): none {
-  request := try! validateNotificationPermissionRequest({
+  request := validateNotificationPermissionRequest({
     id: "notify-permission",
     options: {
       alert: true,
       sound: false,
       badge: true,
     },
-  })
+  })!
 
   parsed := responseObject(request)
   Assert.equal(parsed.get("id")!, "notify-permission")
-  options := try! parsed.get("options")! as SerialObject
+  options := (parsed.get("options")! as SerialObject)!
   Assert.equal(options.get("sound")!, false)
 
   invalid := validateNotificationPermissionRequest({ id: "bad", options: true })
@@ -174,7 +174,7 @@ export function testValidatesNotificationPermissionRequests(): none {
 }
 
 export function testValidatesPostNotificationRequests(): none {
-  request := try! validatePostNotificationRequest({
+  request := validatePostNotificationRequest({
     id: "notify-post",
     options: {
       id: "custom-notification",
@@ -188,10 +188,10 @@ export function testValidatesPostNotificationRequests(): none {
         source: "test",
       },
     },
-  })
+  })!
 
   parsed := responseObject(request)
-  options := try! parsed.get("options")! as SerialObject
+  options := (parsed.get("options")! as SerialObject)!
   Assert.equal(options.get("id")!, "custom-notification")
   Assert.equal(options.get("title")!, "Build complete")
   Assert.equal(options.get("subtitle")!, "WebShell")
@@ -199,7 +199,7 @@ export function testValidatesPostNotificationRequests(): none {
   Assert.equal(options.get("sound")!, false)
   Assert.equal(options.get("badge")!, 2)
   Assert.equal(options.get("delaySeconds")!, 1.5)
-  userInfo := try! options.get("userInfo")! as SerialObject
+  userInfo := (options.get("userInfo")! as SerialObject)!
   Assert.equal(userInfo.get("source")!, "test")
 
   missingTitle := validatePostNotificationRequest({ id: "notify-post", options: {} })
@@ -222,18 +222,18 @@ export function testValidatesPostNotificationRequests(): none {
 }
 
 export function testValidatesClipboardRequests(): none {
-  readRequest := try! validateClipboardReadTextRequest({ id: "clipboard-read", options: {} })
+  readRequest := validateClipboardReadTextRequest({ id: "clipboard-read", options: {} })!
   readParsed := responseObject(readRequest)
   Assert.equal(readParsed.get("id")!, "clipboard-read")
 
-  writeRequest := try! validateClipboardWriteTextRequest({
+  writeRequest := validateClipboardWriteTextRequest({
     id: "clipboard-write",
     options: {
       text: "hello clipboard",
     },
-  })
+  })!
   writeParsed := responseObject(writeRequest)
-  options := try! writeParsed.get("options")! as SerialObject
+  options := (writeParsed.get("options")! as SerialObject)!
   Assert.equal(options.get("text")!, "hello clipboard")
 
   missingText := validateClipboardWriteTextRequest({ id: "clipboard-write", options: {} })
