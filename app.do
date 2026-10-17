@@ -12,7 +12,7 @@ import { WebShellOptions } from "./options"
 export class WebShellApp {
   readonly htmlPath: string
   readonly options: WebShellOptions
-  private readonly native: NativeWebShellApp
+  private native: NativeWebShellApp
   private bridge: WebShellBridgeRegistry
 
   static constructor(htmlPath: string, options: WebShellOptions = WebShellOptions {}): WebShellApp {
