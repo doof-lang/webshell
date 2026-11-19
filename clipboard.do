@@ -33,38 +33,33 @@ function validateClipboardRequest(
   requiresText: bool,
 ): Result<string, string> {
   object := params as SerialObject else {
-    return Failure(operation + " request must be an object")
+    return Failure("${operation} request must be an object")
   }
 
   idValue := object.get("id") else {
-    return Failure(operation + " request is missing string id")
+    return Failure("${operation} request is missing string id")
   }
   id := idValue as string else {
-    return Failure(operation + " request id must be a string")
+    return Failure("${operation} request id must be a string")
   }
   if id.length == 0 {
-    return Failure(operation + " request id must not be empty")
+    return Failure("${operation} request id must not be empty")
   }
 
-  if object.has("options") {
-    options := object.get("options")!
-    if options != none {
-      optionsObject := options as SerialObject else {
-        return Failure(operation + " options must be an object when provided")
+  if options := object.get("options") {
+    optionsObject := options as SerialObject else {
+      return Failure("${operation} options must be an object when provided")
+    }
+    if requiresText {
+      textValue := optionsObject.get("text") else {
+        return Failure("${operation} options are missing string text")
       }
-      if requiresText {
-        textValue := optionsObject.get("text") else {
-          return Failure(operation + " options are missing string text")
-        }
-        _ := textValue as string else {
-          return Failure(operation + " text must be a string")
-        }
+      _ := textValue as string else {
+        return Failure("${operation} text must be a string")
       }
-    } else if requiresText {
-      return Failure(operation + " options are missing string text")
     }
   } else if requiresText {
-    return Failure(operation + " options are missing string text")
+    return Failure("${operation} options are missing string text")
   }
 
   return Success(formatJsonValue(object))

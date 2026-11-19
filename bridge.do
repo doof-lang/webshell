@@ -14,10 +14,10 @@ export class WebShellBridgeRegistry {
 
   dispatch(requestJson: string): string {
     request := parseJsonValue(requestJson) else error {
-      return failureResponse("", "Invalid bridge request JSON: " + error)
+      return failureResponse("", "Invalid bridge request JSON: ${error}")
     }
     object := request as SerialObject else error {
-      return failureResponse("", "Invalid bridge request: " + error)
+      return failureResponse("", "Invalid bridge request: ${error}")
     }
 
     idValue := object.get("id") else {
@@ -33,13 +33,10 @@ export class WebShellBridgeRegistry {
       return failureResponse(id, "Invalid bridge request: name must be a string")
     }
 
-    let params: SerialValue = none
-    if object.has("params") {
-      params = object.get("params")!
-    }
+    params: SerialValue := object.get("params") ?? none
 
     handler := handlers.get(name) else {
-      return failureResponse(id, "No Doof binding registered for '" + name + "'")
+      return failureResponse(id, "No Doof binding registered for '${name}'")
     }
     return case handler.call(params) {
       success: Success -> successResponse(id, success.value),

@@ -11,7 +11,7 @@ import { join, resourcesDirectory } from "std/path"
 
 function main(): int {
   resources := resourcesDirectory() else error {
-    println("Could not locate app resources: " + error)
+    println("Could not locate app resources: ${error}")
     return 1
   }
 
@@ -43,7 +43,7 @@ function main(): int {
       ],
     },
   ]) else error {
-    println("Could not configure menus: " + error)
+    println("Could not configure menus: ${error}")
     return 1
   }
 
@@ -52,7 +52,7 @@ function main(): int {
       return Failure("greet expects a string name")
     }
 
-    message := "Hello, " + name + "!"
+    message := "Hello, ${name}!"
     try app.postEvent("greeted", message)
     return Success(message)
   })
@@ -61,7 +61,7 @@ function main(): int {
   case result {
     _: Success -> return 0
     failure: Failure -> {
-      println("WebShell failed: " + failure.error)
+      println("WebShell failed: ${failure.error}")
       return 1
     }
   }
